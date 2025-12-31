@@ -3,13 +3,13 @@
 
 Projet de déploiement de l'application Spring PetClinic sur un cluster Kubernetes local.
 
-## 📝 À propos
+##  À propos
 
 Ce projet consiste à déployer une application Spring Boot (PetClinic) sur Kubernetes avec une base de données MySQL persistante. L'objectif est de mettre en pratique les concepts d'orchestration de conteneurs, de gestion de configuration et de monitoring.
 
 Le déploiement se fait en **local sur une VM provisionnée via Vagrant**, ce qui me permet de simuler un environnement de production sans dépendre du cloud.
 
-## 🎯 Objectifs du projet
+##  Objectifs du projet
 
 - Conteneuriser une application Spring Boot
 - Déployer une stack applicative complète sur Kubernetes
@@ -18,7 +18,7 @@ Le déploiement se fait en **local sur une VM provisionnée via Vagrant**, ce qu
 - Sécuriser les credentials avec Secrets
 - Implémenter du monitoring basique
 
-## 🛠️ Stack technique
+## Stack technique
 
 - **Application**: Spring PetClinic (Java/Spring Boot)
 - **Base de données**: MySQL 8.0
@@ -27,7 +27,7 @@ Le déploiement se fait en **local sur une VM provisionnée via Vagrant**, ce qu
 - **Provisionnement**: Vagrant
 - **OS**: Ubuntu 22.04
 
-## 📋 Prérequis
+##  Prérequis
 
 Avant de commencer, assurez-vous d'avoir installé :
 
@@ -35,7 +35,7 @@ Avant de commencer, assurez-vous d'avoir installé :
 - VirtualBox (ou un autre provider compatible)
 - Git
 
-## 🚀 Installation et déploiement
+##  Installation et déploiement
 
 ### Étape 1 : Cloner le repository
 
@@ -103,7 +103,7 @@ kubectl port-forward svc/petclinic 8080:80 -n petclinic
 # Puis ouvrir http://localhost:8080 dans votre navigateur
 ```
 
-## 🏗️ Architecture
+## Architecture
 
 L'application est déployée selon l'architecture suivante :
 
@@ -193,7 +193,7 @@ kubectl get pods -n petclinic -w
 # L'application reste accessible pendant la recréation
 ```
 
-## 📊 Monitoring
+##  Monitoring
 
 ### Métriques des ressources
 
@@ -225,7 +225,7 @@ kubectl logs -f deployment/mysql -n petclinic
 minikube dashboard
 ```
 
-## 🔍 Commandes utiles
+##  Commandes utiles
 
 ### Gestion des pods
 
@@ -267,7 +267,7 @@ kubectl get secret -n petclinic
 kubectl get pvc -n petclinic
 ```
 
-## 🔐 Sécurité
+##  Sécurité
 
 Les bonnes pratiques de sécurité mises en œuvre :
 
@@ -277,7 +277,7 @@ Les bonnes pratiques de sécurité mises en œuvre :
 - ✅ Resources limits pour éviter l'épuisement des ressources
 - ✅ Health checks pour détecter les pods défaillants
 
-## 🗂️ Structure du projet
+##  Structure du projet
 
 ```
 .
@@ -335,7 +335,7 @@ vagrant halt
 vagrant destroy
 ```
 
-## 🐛 Troubleshooting
+##  Troubleshooting
 
 ### Problème : Les pods ne démarrent pas
 
@@ -390,7 +390,7 @@ kubectl describe pvc mysql-pvc -n petclinic
 kubectl get storageclass
 ```
 
-## 📚 Ce que j'ai appris
+##  Ce que j'ai appris
 
 Au cours de ce projet, j'ai acquis les compétences suivantes :
 
