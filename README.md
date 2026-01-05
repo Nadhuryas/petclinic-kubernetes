@@ -569,19 +569,6 @@ Ce projet m'a permis de maîtriser :
 - Documentation technique
 
 ---
-
-## 📝 Licence
-
-Ce projet est sous licence MIT. Voir [LICENSE](./LICENSE) pour plus d'informations.
-
----
-
-## 👤 Auteur
-
-**Votre Nom**
-- GitHub : [@votre-username](https://github.com/votre-username)
-- LinkedIn : [Votre Profil](https://linkedin.com/in/votre-profil)
-
 ---
 
 ## 🤝 Contribution
