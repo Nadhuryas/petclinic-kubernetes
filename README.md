@@ -273,7 +273,6 @@ Les bonnes pratiques de sécurité mises en œuvre :
 
 - ✅ Aucun mot de passe en clair dans les manifests
 - ✅ Utilisation de Secrets Kubernetes pour les credentials
-- ✅ Utilisateur non-root dans le conteneur PetClinic
 - ✅ Resources limits pour éviter l'épuisement des ressources
 - ✅ Health checks pour détecter les pods défaillants
 
@@ -298,9 +297,9 @@ Les bonnes pratiques de sécurité mises en œuvre :
 │       ├── petclinic-deployment.yaml
 │       └── petclinic-service.yaml
 ├── scripts/
+│   ├── build.sh
 │   ├── deploy.sh
-│   ├── cleanup.sh
-│   └── test-persistence.sh
+│   └── cleanup.sh
 └── docs/
     ├── architecture.md
     └── screenshots/
