@@ -1,402 +1,598 @@
-# petclinic-kubernetes
 # Spring PetClinic sur Kubernetes
 
-Projet de déploiement de l'application Spring PetClinic sur un cluster Kubernetes local.
+Déploiement d'une application Spring Boot sur un cluster Kubernetes multi-nœuds avec haute disponibilité et persistance des données.
 
-##  À propos
+---
 
-Ce projet consiste à déployer une application Spring Boot (PetClinic) sur Kubernetes avec une base de données MySQL persistante. L'objectif est de mettre en pratique les concepts d'orchestration de conteneurs, de gestion de configuration et de monitoring.
+## 📋 À Propos
 
-Le déploiement se fait en **local sur une VM provisionnée via Vagrant**, ce qui me permet de simuler un environnement de production sans dépendre du cloud.
+Ce projet démontre le déploiement d'une application **Spring Boot** (PetClinic) sur Kubernetes avec :
+- Architecture multi-tiers (application + base de données)
+- Haute disponibilité (2 réplicas)
+- Persistance des données (MySQL avec volume)
+- Gestion sécurisée des credentials (Secrets K8s)
+- Monitoring des ressources
 
-##  Objectifs du projet
+Le déploiement s'effectue sur un **cluster Kubernetes local** provisionné avec Vagrant (3 VMs : 1 master + 2 workers), simulant un environnement de production.
 
-- Conteneuriser une application Spring Boot
-- Déployer une stack applicative complète sur Kubernetes
-- Configurer la persistance des données
-- Mettre en place la haute disponibilité
-- Sécuriser les credentials avec Secrets
-- Implémenter du monitoring basique
+---
 
-## Stack technique
+## 🎯 Objectifs
 
-- **Application**: Spring PetClinic (Java/Spring Boot)
-- **Base de données**: MySQL 8.0
-- **Conteneurisation**: Docker
-- **Orchestration**: Kubernetes (Minikube)
-- **Provisionnement**: Vagrant
-- **OS**: Ubuntu 22.04
+- ✅ Conteneuriser une application Java/Spring Boot
+- ✅ Déployer une stack complète sur Kubernetes
+- ✅ Implémenter la persistance des données
+- ✅ Configurer la haute disponibilité
+- ✅ Sécuriser les credentials avec Secrets
+- ✅ Mettre en place du monitoring basique
 
-##  Prérequis
+---
 
-Avant de commencer, assurez-vous d'avoir installé :
+## 🛠️ Stack Technique
 
-- Vagrant (2.3+)
-- VirtualBox (ou un autre provider compatible)
-- Git
+| Composant | Technologie | Version |
+|-----------|-------------|---------|
+| **Application** | Spring PetClinic (Java) | Latest |
+| **Base de données** | MySQL | 8.0 |
+| **Conteneurisation** | Docker | 20.10+ |
+| **Orchestration** | Kubernetes | 1.28+ |
+| **Provisionnement** | Vagrant + VirtualBox | 2.3+ / 7.0+ |
+| **OS** | Ubuntu | 22.04 |
 
-##  Installation et déploiement
+---
 
-### Étape 1 : Cloner le repository
+## ⚙️ Prérequis
+
+Avant de commencer, installez les outils suivants sur votre machine :
+
+- **Vagrant** 2.3+ → [Télécharger](https://www.vagrantup.com/downloads)
+- **VirtualBox** 7.0+ → [Télécharger](https://www.virtualbox.org/wiki/Downloads)
+- **Git** 2.30+ → [Télécharger](https://git-scm.com/downloads)
+
+**Configuration minimale :**
+- RAM : 8 GB
+- CPU : 4 cœurs
+- Stockage : 20 GB libre
+
+---
+
+## 🚀 Installation et Déploiement
+
+### Étape 1 : Cloner le Repository
 
 ```bash
-git clone https://github.com/votre-username/spring-petclinic-k8s.git
-cd spring-petclinic-k8s
+git clone https://github.com/votre-username/petclinic-k8s.git
+cd petclinic-k8s
 ```
 
-### Étape 2 : Démarrer la VM avec Vagrant
+### Étape 2 : Provisionner l'Infrastructure
+
+Le [`Vagrantfile`](./Vagrantfile) crée automatiquement 3 VMs :
+- **k8s-master** (192.168.56.10) - Control Plane
+- **k8s-worker1** (192.168.56.11) - Worker Node
+- **k8s-worker2** (192.168.56.12) - Worker Node
 
 ```bash
-# Lancer la VM (provisionnée avec Minikube, Docker, kubectl)
+# Démarrer toutes les VMs (prend 5-10 minutes)
 vagrant up
 
-# Se connecter à la VM
-vagrant ssh
+# Vérifier l'état
+vagrant status
 ```
 
-### Étape 3 : Builder l'image Docker
+### Étape 3 : Initialiser le Cluster Kubernetes
 
-Une fois connecté à la VM :
+Se connecter au master et suivre le [Guide de Déploiement](./docs/deployment-guide.md) :
 
 ```bash
-# Cloner le code source de Spring PetClinic
-git clone https://github.com/spring-projects/spring-petclinic.git
-cd spring-petclinic
+# Connexion au master
+vagrant ssh k8s-master
 
-# Copier le Dockerfile depuis le projet
-cp /vagrant/Dockerfile .
-
-# Builder l'image (prend environ 5-10 minutes)
-docker build -t petclinic:v1.0 .
-
-# Vérifier que l'image est créée
-docker images | grep petclinic
+# Le cluster est initialisé automatiquement par Vagrant
+# Vérifier que tous les nœuds sont Ready
+kubectl get nodes
 ```
 
-### Étape 4 : Déployer sur Kubernetes
+**Résultat attendu :**
+```
+NAME           STATUS   ROLES           AGE
+k8s-master     Ready    control-plane   5m
+k8s-worker1    Ready    <none>          3m
+k8s-worker2    Ready    <none>          3m
+```
+
+### Étape 4 : Builder l'Image Docker
+
+Le [`Dockerfile`](./docker/dockerfile) utilise un build multi-stage pour optimiser la taille de l'image.
 
 ```bash
-# Retour au dossier du projet
-cd /vagrant
+# Exécuter le script de build
+./scripts/build.sh
+```
 
-# Déployer tous les composants
+**Ce script va :**
+1. Cloner le code source de Spring PetClinic
+2. Compiler l'application avec Maven
+3. Créer une image Docker optimisée
+4. Taguer l'image : `petclinic:1.0`
+
+**Durée estimée :** 5-10 minutes
+
+### Étape 5 : Déployer sur Kubernetes
+
+Le script [`deploy.sh`](./scripts/deploy.sh) applique tous les manifests Kubernetes dans le bon ordre.
+
+```bash
+# Lancer le déploiement complet
 ./scripts/deploy.sh
-
-# Suivre le déploiement
-kubectl get pods -n petclinic -w
 ```
 
-Le script va :
-1. Créer le namespace `petclinic`
-2. Déployer MySQL avec son volume persistant
-3. Déployer l'application PetClinic (2 réplicas)
-4. Exposer l'application via un Service
+**Ce script va :**
+1. Créer le namespace `petclinic-dev`
+2. Créer les Secrets (credentials MySQL)
+3. Déployer MySQL avec PersistentVolumeClaim (10Gi)
+4. Déployer PetClinic (2 réplicas)
+5. Exposer l'application via Service NodePort
 
-### Étape 5 : Accéder à l'application
+**Surveiller le déploiement :**
+```bash
+# Suivre en temps réel
+kubectl get pods -n petclinic-dev -w
+
+# Vérifier le statut final
+kubectl get all -n petclinic-dev
+```
+
+**Résultat attendu :**
+```
+NAME                         READY   STATUS    RESTARTS   AGE
+pod/mysql-xxx                1/1     Running   0          2m
+pod/petclinic-xxx            1/1     Running   0          1m
+pod/petclinic-yyy            1/1     Running   0          1m
+
+NAME                TYPE       CLUSTER-IP     PORT(S)        AGE
+service/mysql       ClusterIP  10.96.x.x      3306/TCP       2m
+service/petclinic   NodePort   10.96.y.y      80:30080/TCP   1m
+```
+
+### Étape 6 : Accéder à l'Application
+
+L'application est exposée sur le port **30080** de chaque worker node.
+
+**Méthode 1 : Via IP du Worker**
+```bash
+# Obtenir l'IP d'un worker
+kubectl get nodes -o wide
+
+# Ouvrir dans le navigateur
+# http://192.168.56.11:30080
+# ou
+# http://192.168.56.12:30080
+```
+
+**Méthode 2 : Via Port-Forward (pour test)**
+```bash
+kubectl port-forward -n petclinic-dev svc/petclinic 8080:80
+
+# Ouvrir: http://localhost:8080
+```
+
+---
+
+## 📁 Structure du Projet
+
+```
+petclinic-k8s/
+├── README.md                    # Ce fichier
+├── Vagrantfile                  # Configuration des VMs
+├── docker/
+│   └── dockerfile               # Build multi-stage de l'app
+├── kubernetes/
+│   ├── namespace.yaml           # Namespace petclinic-dev
+│   ├── mysql/
+│   │   ├── mysql-secret.yaml    # Credentials MySQL
+│   │   ├── mysql-pvc.yaml       # Volume persistant (10Gi)
+│   │   ├── mysql-deployment.yaml # Déploiement MySQL
+│   │   └── mysql-service.yaml   # Service ClusterIP
+│   ├── petclinic/
+│   │   ├── petclinic-configmap.yaml    # Configuration app
+│   │   ├── petclinic-deployment.yaml   # Déploiement app (2 réplicas)
+│   │   └── petclinic-service.yaml      # Service NodePort
+│   └── ingress/
+│       └── petclinic-ingress.yaml      # (Optionnel) Ingress
+├── scripts/
+│   ├── build.sh                 # Build de l'image Docker
+│   ├── deploy.sh                # Déploiement complet
+│   ├── cleanup.sh               # Nettoyage des ressources
+│   └── monitor.sh               # Monitoring en temps réel
+└── docs/
+    ├── architecture.md          # Documentation architecture
+    ├── deployment-guide.md      # Guide détaillé
+    └── screenshots/             # Captures d'écran
+```
+
+---
+
+## ✅ Tests et Validation
+
+### Test 1 : Vérifier les Pods
 
 ```bash
-# Méthode 1 : Via Minikube service (ouvre automatiquement le navigateur)
-minikube service petclinic -n petclinic
-
-# Méthode 2 : Via port-forward
-kubectl port-forward svc/petclinic 8080:80 -n petclinic
-# Puis ouvrir http://localhost:8080 dans votre navigateur
+kubectl get pods -n petclinic-dev
 ```
 
-## Architecture
+**Statut attendu :**
+- Tous les pods en `Running`
+- Colonne `READY` : `1/1`
+- Aucun `RESTART`
 
-L'application est déployée selon l'architecture suivante :
+### Test 2 : Fonctionnalité de l'Application
 
-```
-┌─────────────────────────────────────────┐
-│         Namespace: petclinic            │
-│                                         │
-│  ┌──────────────┐    ┌──────────────┐  │
-│  │  PetClinic   │◄───┤  ConfigMap   │  │
-│  │  (2 replicas)│    └──────────────┘  │
-│  │              │                       │
-│  │  Port: 8080  │◄───┤   Secret     │  │
-│  └──────┬───────┘    └──────────────┘  │
-│         │                               │
-│         ▼                               │
-│  ┌──────────────┐    ┌──────────────┐  │
-│  │    MySQL     │◄───┤     PVC      │  │
-│  │  Port: 3306  │    │    (5Gi)     │  │
-│  └──────────────┘    └──────────────┘  │
-└─────────────────────────────────────────┘
-         │
-         ▼
-    LoadBalancer
-    (Port 80)
-```
+1. Accéder à l'application : `http://192.168.56.11:30080`
+2. Cliquer sur **"Find Owners"** → **"Add Owner"**
+3. Remplir le formulaire :
+   - First Name : `John`
+   - Last Name : `Doe`
+   - Address : `123 Main St`
+   - City : `Springfield`
+   - Telephone : `1234567890`
+4. Cliquer sur **"Add Owner"**
+5. Vérifier que le propriétaire apparaît dans la liste
 
-### Composants déployés
+### Test 3 : Persistance des Données
 
-| Composant | Type | Replicas | Stockage |
-|-----------|------|----------|----------|
-| PetClinic | Deployment | 2 | - |
-| MySQL | Deployment | 1 | 5Gi (PVC) |
-| ConfigMap | - | - | - |
-| Secret | - | - | - |
-
-Pour plus de détails, consultez la [documentation architecture](docs/architecture.md).
-
-## ✅ Tests et validation
-
-### Test 1 : Vérifier que tous les pods tournent
+Ce test vérifie que les données MySQL survivent au redémarrage du pod.
 
 ```bash
-kubectl get pods -n petclinic
+# Supprimer le pod MySQL
+kubectl delete pod -n petclinic-dev -l app=mysql
 
-# Résultat attendu :
-# NAME                         READY   STATUS    RESTARTS   AGE
-# mysql-xxxx                   1/1     Running   0          2m
-# petclinic-xxxx               1/1     Running   0          1m
-# petclinic-yyyy               1/1     Running   0          1m
+# Attendre la recréation (30 secondes)
+kubectl get pods -n petclinic-dev -w
+
+# Rafraîchir l'application dans le navigateur
+# Les données (propriétaires) doivent toujours être présentes ✅
 ```
 
-### Test 2 : Tester l'application
+**Explication :** Le PersistentVolume conserve les données même quand le pod est supprimé.
 
-1. Ouvrir l'application dans le navigateur
-2. Naviguer vers "Find Owners" → "Add Owner"
+### Test 4 : Haute Disponibilité
 
-### Test 3 : Tester la persistance des données
-
-```bash
-# Exécuter le script de test automatisé
-./scripts/test-persistence.sh
-
-# Le script va :
-# 1. Compter le nombre d'entrées dans la base
-# 2. Supprimer le pod MySQL
-# 3. Attendre la recréation
-# 4. Vérifier que les données sont toujours présentes
-```
-
-### Test 4 : Tester la haute disponibilité
+Ce test vérifie que l'application reste accessible même si un pod tombe.
 
 ```bash
 # Supprimer un pod PetClinic
-POD=$(kubectl get pod -n petclinic -l app=petclinic -o jsonpath='{.items[0].metadata.name}')
-kubectl delete pod $POD -n petclinic
-
-# Observer la recréation automatique
-kubectl get pods -n petclinic -w
+kubectl delete pod -n petclinic-dev -l app=petclinic --field-selector status.phase=Running | head -1
 
 # L'application reste accessible pendant la recréation
+# Rafraîchir plusieurs fois le navigateur → Aucune erreur
+
+# Vérifier la recréation automatique
+kubectl get pods -n petclinic-dev
 ```
 
-##  Monitoring
+**Explication :** Le Deployment maintient toujours 2 réplicas. Kubernetes recrée automatiquement les pods supprimés.
 
-### Métriques des ressources
+---
 
+## 📊 Monitoring
+
+### Métriques des Ressources
+
+**Installer Metrics Server :**
 ```bash
-# Voir l'utilisation CPU/Mémoire des pods
-kubectl top pods -n petclinic
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+```
 
-# Voir l'utilisation des nodes
+**Consulter les métriques :**
+```bash
+# Utilisation CPU/RAM des nœuds
 kubectl top nodes
+
+# Utilisation CPU/RAM des pods
+kubectl top pods -n petclinic-dev
+```
+
+**Exemple de sortie :**
+```
+NAME                         CPU(cores)   MEMORY(bytes)
+mysql-xxx                    50m          250Mi
+petclinic-xxx                100m         450Mi
+petclinic-yyy                95m          440Mi
 ```
 
 ### Logs
 
 ```bash
-# Voir les logs de tous les pods PetClinic
-kubectl logs -f deployment/petclinic -n petclinic
+# Logs en temps réel de tous les pods PetClinic
+kubectl logs -n petclinic-dev -l app=petclinic -f
 
-# Voir les logs d'un pod spécifique
-kubectl logs -f <pod-name> -n petclinic
+# Logs d'un pod spécifique
+kubectl logs -n petclinic-dev <pod-name>
 
-# Voir les logs MySQL
-kubectl logs -f deployment/mysql -n petclinic
+# Logs MySQL
+kubectl logs -n petclinic-dev -l app=mysql
 ```
 
-### Dashboard Kubernetes
+### Monitoring Automatisé
+
+Utiliser le script de monitoring :
 
 ```bash
-# Ouvrir le dashboard (depuis la VM)
-minikube dashboard
+./scripts/monitor.sh
 ```
 
-##  Commandes utiles
+Ce script affiche en temps réel :
+- Utilisation CPU/RAM des nœuds
+- Utilisation des pods
+- Statut des pods
+- Services actifs
 
-### Gestion des pods
+---
+
+## 🔧 Commandes Utiles
+
+### Gestion des Pods
 
 ```bash
 # Lister tous les pods du namespace
-kubectl get pods -n petclinic
+kubectl get pods -n petclinic-dev
 
-# Voir les détails d'un pod
-kubectl describe pod <pod-name> -n petclinic
+# Détails d'un pod
+kubectl describe pod <pod-name> -n petclinic-dev
 
 # Se connecter à un pod
-kubectl exec -it <pod-name> -n petclinic -- /bin/sh
+kubectl exec -it <pod-name> -n petclinic-dev -- /bin/bash
 
 # Redémarrer un déploiement
-kubectl rollout restart deployment petclinic -n petclinic
+kubectl rollout restart deployment petclinic -n petclinic-dev
 ```
 
-### Gestion des services
+### Gestion des Services
 
 ```bash
 # Lister les services
-kubectl get svc -n petclinic
+kubectl get svc -n petclinic-dev
 
-# Voir les détails d'un service
-kubectl describe svc petclinic -n petclinic
+# Détails d'un service
+kubectl describe svc petclinic -n petclinic-dev
+
+# Tester la connectivité MySQL depuis un pod
+kubectl run -it --rm debug --image=mysql:8.0 --restart=Never -n petclinic-dev -- \
+  mysql -h mysql -u petclinic -p
 ```
 
 ### Debug
 
 ```bash
-# Voir les événements récents
-kubectl get events -n petclinic --sort-by='.lastTimestamp'
+# Événements récents (utile pour diagnostiquer les erreurs)
+kubectl get events -n petclinic-dev --sort-by='.lastTimestamp'
 
 # Vérifier les ConfigMaps et Secrets
-kubectl get configmap -n petclinic
-kubectl get secret -n petclinic
+kubectl get configmap -n petclinic-dev
+kubectl get secret -n petclinic-dev
 
 # Vérifier le stockage
-kubectl get pvc -n petclinic
+kubectl get pvc -n petclinic-dev
+kubectl describe pvc mysql-pvc -n petclinic-dev
 ```
 
-##  Sécurité
+---
 
-Les bonnes pratiques de sécurité mises en œuvre :
+## 🔒 Sécurité
 
-- ✅ Aucun mot de passe en clair dans les manifests
-- ✅ Utilisation de Secrets Kubernetes pour les credentials
-- ✅ Resources limits pour éviter l'épuisement des ressources
-- ✅ Health checks pour détecter les pods défaillants
+### Bonnes Pratiques Implémentées
 
-##  Structure du projet
+✅ **Secrets Kubernetes**
+- Credentials MySQL stockés dans un Secret
+- Pas de mots de passe en clair dans les manifests
+- Variables d'environnement injectées de manière sécurisée
 
-```
-.
-├── README.md
-├── Vagrantfile
-├── Dockerfile
-├── .dockerignore
-├── .gitignore
-├── k8s/
-│   ├── namespace.yaml
-│   ├── mysql/
-│   │   ├── mysql-secret.yaml
-│   │   ├── mysql-pvc.yaml
-│   │   ├── mysql-deployment.yaml
-│   │   └── mysql-service.yaml
-│   └── petclinic/
-│       ├── petclinic-configmap.yaml
-│       ├── petclinic-deployment.yaml
-│       └── petclinic-service.yaml
-├── scripts/
-│   ├── build.sh
-│   ├── deploy.sh
-│   └── cleanup.sh
-└── docs/
-    ├── architecture.md
-    └── screenshots/
-        ├── app-running.png
-        ├── pods-list.png
-        ├── persistence-proof.png
-        └── metrics.png
-```
+✅ **Resource Limits**
+- Limites CPU/RAM définies pour chaque pod
+- Prévention de l'épuisement des ressources du cluster
+
+✅ **Health Checks**
+- Liveness Probes : Redémarrage automatique des pods défaillants
+- Readiness Probes : Retrait des pods non prêts du load balancing
+
+✅ **Namespace Isolation**
+- Ressources isolées dans un namespace dédié
+- Facilite la gestion des politiques de sécurité
+
+### Améliorations Recommandées pour Production
+
+- Network Policies (isolation réseau)
+- RBAC (contrôle d'accès granulaire)
+- Pod Security Standards
+- TLS/SSL pour les communications
+- Scan des images Docker (Trivy, Clair)
+
+---
 
 ## 🧹 Nettoyage
 
-### Supprimer le déploiement
+### Supprimer le Déploiement Kubernetes
 
 ```bash
-# Supprimer tous les composants
+# Option 1 : Script automatisé
 ./scripts/cleanup.sh
 
-# Ou manuellement
-kubectl delete namespace petclinic
+# Option 2 : Suppression manuelle du namespace
+kubectl delete namespace petclinic-dev
 ```
 
-### Arrêter la VM
+**Note :** Cela supprime tous les composants (pods, services, PVC, secrets, etc.)
+
+### Arrêter/Supprimer les VMs
 
 ```bash
-# Sortir de la VM
+# Sortir de la VM (si connecté)
 exit
 
-# Arrêter la VM
+# Arrêter les VMs (conserve les données)
 vagrant halt
 
-# Supprimer complètement la VM
-vagrant destroy
+# Redémarrer les VMs
+vagrant up
+
+# Supprimer complètement les VMs
+vagrant destroy -f
 ```
 
-##  Troubleshooting
+---
 
-### Problème : Les pods ne démarrent pas
+## 🐛 Dépannage
 
-**Solution** :
+### Problème : Pods en "Pending"
+
+**Cause possible :** Ressources insuffisantes sur les workers
+
+**Solution :**
 ```bash
+# Vérifier les ressources disponibles
+kubectl top nodes
+kubectl describe nodes
+
 # Vérifier les événements
-kubectl get events -n petclinic --sort-by='.lastTimestamp'
-
-# Voir les logs
-kubectl logs <pod-name> -n petclinic
-
-# Décrire le pod pour plus d'infos
-kubectl describe pod <pod-name> -n petclinic
+kubectl get events -n petclinic-dev | grep <pod-name>
 ```
 
-### Problème : L'image PetClinic n'est pas trouvée
+### Problème : Pods en "CrashLoopBackOff"
 
-**Solution** :
+**Cause possible :** Erreur de connexion à MySQL ou mauvaise configuration
+
+**Solution :**
 ```bash
-# Vérifier que l'image existe
-docker images | grep petclinic
+# Consulter les logs du pod
+kubectl logs -n petclinic-dev <pod-name> --previous
 
-# Si besoin, rebuild l'image
-cd spring-petclinic
-docker build -t petclinic:v1.0 .
-```
+# Vérifier que MySQL est prêt
+kubectl get pods -n petclinic-dev -l app=mysql
 
-### Problème : PetClinic ne peut pas se connecter à MySQL
-
-**Solution** :
-```bash
-# Vérifier que MySQL est bien démarré
-kubectl get pods -n petclinic -l app=mysql
-
-# Attendre que MySQL soit prêt
-kubectl wait --for=condition=ready pod -l app=mysql -n petclinic --timeout=180s
+# Attendre que MySQL soit complètement démarré
+kubectl wait --for=condition=ready pod -l app=mysql -n petclinic-dev --timeout=180s
 
 # Redémarrer PetClinic
-kubectl rollout restart deployment petclinic -n petclinic
+kubectl rollout restart deployment petclinic -n petclinic-dev
 ```
 
-### Problème : Le stockage persistant ne fonctionne pas
+### Problème : Image Docker non trouvée
 
-**Solution** :
+**Cause possible :** Image non buildée ou non poussée vers un registry
+
+**Solution :**
 ```bash
-# Vérifier le PVC
-kubectl get pvc -n petclinic
-kubectl describe pvc mysql-pvc -n petclinic
+# Vérifier les images locales
+docker images | grep petclinic
 
-# Sur Minikube, le provisioner par défaut devrait fonctionner
-# Si problème, vérifier les StorageClass
-kubectl get storageclass
+# Rebuilder si nécessaire
+./scripts/build.sh
+
+# Si vous utilisez Docker Hub, pousser l'image
+docker tag petclinic:1.0 <votre-username>/petclinic:1.0
+docker push <votre-username>/petclinic:1.0
+
+# Mettre à jour le manifest petclinic-deployment.yaml avec la nouvelle image
 ```
 
-##  Ce que j'ai appris
+### Problème : PVC non "Bound"
 
-Au cours de ce projet, j'ai acquis les compétences suivantes :
+**Cause possible :** Pas de StorageClass disponible
 
-- Création de Dockerfiles multi-stage optimisés
-- Déploiement d'applications stateful sur Kubernetes
-- Gestion de la persistance avec PersistentVolumes
-- Configuration d'applications avec ConfigMaps et Secrets
-- Mise en place de health checks et probes
-- Debugging d'applications conteneurisées
+**Solution :**
+```bash
+# Vérifier les StorageClass
+kubectl get storageclass
 
-## 🔗 Ressources
+# Vérifier le PVC
+kubectl describe pvc mysql-pvc -n petclinic-dev
 
+# Si nécessaire, créer un PV manuellement ou utiliser un storage provisioner
+```
+
+### Problème : Cannot connect to MySQL
+
+**Cause possible :** Service DNS non résolu ou MySQL pas prêt
+
+**Solution :**
+```bash
+# Vérifier le service MySQL
+kubectl get svc -n petclinic-dev mysql
+
+# Tester la résolution DNS depuis un pod PetClinic
+kubectl exec -it -n petclinic-dev <petclinic-pod> -- nslookup mysql
+
+# Vérifier les logs MySQL
+kubectl logs -n petclinic-dev -l app=mysql
+```
+
+---
+
+## 📚 Ressources et Documentation
+
+**Documentation du projet :**
+- [Guide de Déploiement Détaillé](./docs/deployment-guide.md)
+- [Documentation Architecture](./docs/architecture.md)
+- [Screenshots](./docs/screenshots/)
+
+**Ressources externes :**
 - [Documentation Kubernetes](https://kubernetes.io/docs/)
 - [Spring PetClinic GitHub](https://github.com/spring-projects/spring-petclinic)
 - [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
-- [Minikube Documentation](https://minikube.sigs.k8s.io/docs/)
+- [Kubernetes Patterns](https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/)
 
+---
+
+## 🎓 Compétences Développées
+
+Ce projet m'a permis de maîtriser :
+
+**Conteneurisation :**
+- Création de Dockerfiles multi-stage optimisés
+- Build d'images légères et sécurisées
+- Gestion des registries Docker
+
+**Kubernetes :**
+- Déploiement d'applications stateful et stateless
+- Configuration avec ConfigMaps et Secrets
+- Gestion de la persistance avec PersistentVolumes
+- Mise en place de la haute disponibilité
+- Implémentation de health checks
+- Exposition de services (ClusterIP, NodePort)
+
+**DevOps :**
+- Provisionnement d'infrastructure avec Vagrant
+- Automatisation avec scripts Bash
+- Monitoring et observabilité
+- Debugging d'applications conteneurisées
+- Documentation technique
+
+---
+
+## 📝 Licence
+
+Ce projet est sous licence MIT. Voir [LICENSE](./LICENSE) pour plus d'informations.
+
+---
+
+## 👤 Auteur
+
+**Votre Nom**
+- GitHub : [@votre-username](https://github.com/votre-username)
+- LinkedIn : [Votre Profil](https://linkedin.com/in/votre-profil)
+
+---
+
+## 🤝 Contribution
+
+Les contributions sont les bienvenues ! N'hésitez pas à :
+1. Forker le projet
+2. Créer une branche pour votre fonctionnalité (`git checkout -b feature/AmazingFeature`)
+3. Commiter vos changements (`git commit -m 'Add some AmazingFeature'`)
+4. Pusher vers la branche (`git push origin feature/AmazingFeature`)
+5. Ouvrir une Pull Request
+
+---
+
+**Projet réalisé dans le cadre du module DevOps - Kubernetes**
