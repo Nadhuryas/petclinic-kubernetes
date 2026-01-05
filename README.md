@@ -159,13 +159,6 @@ kubectl get pods -n petclinic
 
 1. Ouvrir l'application dans le navigateur
 2. Naviguer vers "Find Owners" → "Add Owner"
-3. Ajouter un propriétaire de test :
-   - First Name: John
-   - Last Name: Doe
-   - Address: 123 Main Street
-   - City: Paris
-   - Telephone: 0123456789
-4. Vérifier que le propriétaire apparaît dans la liste
 
 ### Test 3 : Tester la persistance des données
 
@@ -399,7 +392,6 @@ Au cours de ce projet, j'ai acquis les compétences suivantes :
 - Configuration d'applications avec ConfigMaps et Secrets
 - Mise en place de health checks et probes
 - Debugging d'applications conteneurisées
-- Documentation technique et architecture
 
 ## 🔗 Ressources
 
